@@ -34,9 +34,16 @@ class Server extends JFrame implements Constants{
       
       try{
          ServerSocket ss = new ServerSocket(PORT);   
+         
+         jtaMain.append("Server Started.\n");   
+         jtaMain.append("IP Address: " + InetAddress.getLocalHost().getHostAddress() + "\n");
+         jtaMain.append("Listening on port: " + ss.getLocalPort() +"\n");
+         
+         
          //continue to wait for connections, start new thread for each connection
                   
          while(true){
+            jtaMain.append(SECTIONBREAK);
             jtaMain.append("Waiting for connections\n");
             Socket cs = ss.accept();
             new ConnectionThread(cs);
@@ -191,27 +198,28 @@ class Server extends JFrame implements Constants{
       //shows main server IO and chat IO
             
       setTitle("Server  Window");
-      setLayout(new BorderLayout());
+      setLayout(new GridLayout(0,2));
+      
       JPanel jpC = new JPanel(new BorderLayout());
-      JPanel jpM = new JPanel(new BorderLayout());    
-            
-      jtaChat = new JTextArea(30,20);
+      jtaChat = new JTextArea(20,20);
       jtaChat.setEditable(false);
       JScrollPane jspC = new JScrollPane(jtaChat);
       jpC.add(new JLabel("CHAT SERVICES"), BorderLayout.NORTH);
       jpC.add(jspC);
       
-      jtaMain = new JTextArea(30,25);
+      JPanel jpM = new JPanel(new BorderLayout());    
+      jtaMain = new JTextArea(20,20);
       jtaMain.setEditable(false);
       JScrollPane jspM = new JScrollPane(jtaMain);
       jpM.add(new JLabel("MAIN SERVER"), BorderLayout.NORTH);
       jpM.add(jspM);
            
-      add(jpM, BorderLayout.WEST);
-      add(jpC, BorderLayout.EAST);
-      
+      add(jpM);
+      add(jpC);
+            
+      setSize(500,500);
       setVisible(true);
-      setLocation(600,0);
+      setLocationRelativeTo(null);
       setDefaultCloseOperation(EXIT_ON_CLOSE);
       pack(); 
    }    

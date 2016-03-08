@@ -11,4 +11,6 @@ public interface Constants{
    public final String READY = "READY"; //message to tell server/client  we are ready to receive
    public final String DONE = "DONE"; // message to tell server/client that we are done
    
+   public final String SECTIONBREAK = "\n************************\n";
+   
 }
