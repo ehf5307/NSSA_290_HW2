@@ -16,10 +16,12 @@ class Server extends JFrame implements Constants{
    public JTextArea jtaChat;
    public JTextArea jtaMain;
    //vector of all chat PrintWtiters
-   Vector<PrintWriter> chatOuts = new Vector<PrintWriter>();
+   Vector<PrintWriter> tcpConnections = new Vector<PrintWriter>();
    //vector of all messges sent since server start
    Vector<String> prevMsgs = new Vector<String>();
+   Vector<InetAddress> udpConnections = new Vector<InetAddress>();
 
+   public DatagramSocket UDPSocket;
    //instance of the question mod class.
    boolean running = true;
    
@@ -40,13 +42,15 @@ class Server extends JFrame implements Constants{
          jtaMain.append("Listening on port: " + ss.getLocalPort() +"\n");
          
          
-         //continue to wait for connections, start new thread for each connection
-                  
+         //start UDP listener thread
+         new UDPListener();
+         
+         //continue to wait for TCP connections, start new thread for each connection
          while(true){
             jtaMain.append(SECTIONBREAK);
             jtaMain.append("Waiting for connections\n");
             Socket cs = ss.accept();
-            new ConnectionThread(cs);
+            new TCPConnection(cs);
          }//end loop
       } 
       catch( UnknownHostException uhe ){
@@ -62,44 +66,9 @@ class Server extends JFrame implements Constants{
    
    
    /**
-   *thread class that determines if connection is for chat or quiz
-   *starts appropriate thread based on above
+   *thread class to handle chat connecitons using TCP/IP
    */
-   class ConnectionThread extends Thread{
-      Socket cs;
-      
-      /**
-      *@param cs, the client socket
-      */     
-      public ConnectionThread(Socket cs){
-         this.cs = cs;
-         start();
-      }
-     
-      /**
-      *Determines if connection is for chat or quiz
-      */
-      public void run(){
-         try{
-            BufferedReader in = new BufferedReader(new InputStreamReader(cs.getInputStream()));
-            String name = in.readLine();
-            String type = in.readLine();
-            jtaMain.append("connected to "+name+". Type: "+type+"\n");
-            if(type.equals(CHAT)){
-               new ChatConnection(cs, name);
-            }   
-         }//end try
-         
-         catch(IOException ioe){jtaChat.append("Problem opening input/output with Client\n");}
-      
-         
-      }//end run method
-   }
-   
-   /**
-   *thread class to handle chat connecitons
-   */
-   public class ChatConnection extends Thread{
+   public class TCPConnection extends Thread{
      Socket cs;
      String name;
      PrintWriter out;
@@ -109,9 +78,8 @@ class Server extends JFrame implements Constants{
       *@param cs, the client socket
       *@param name, the users name
       */
-      public ChatConnection(Socket cs, String name){
+      public TCPConnection(Socket cs){
          this.cs = cs;
-         this.name = name;
          start();
       }
       
@@ -124,8 +92,18 @@ class Server extends JFrame implements Constants{
       */
       public void run(){
          try{
+               BufferedReader in = new BufferedReader(new InputStreamReader(cs.getInputStream()));
+               this.name = in.readLine();
+               jtaMain.append(name + " connected via TCP/IP from " + cs.getInetAddress().getHostAddress()+"\n");
+            }//end try
+         catch(IOException ioe){
+            jtaChat.append("Problem opening input/output with Client\n");
+            return;
+         }
+      
+         try{
             out = new PrintWriter(new OutputStreamWriter(cs.getOutputStream()));
-            chatOuts.add(out);
+            tcpConnections.add(out);
             in = new BufferedReader(new InputStreamReader(cs.getInputStream()));
              
             //send old messages
@@ -149,9 +127,16 @@ class Server extends JFrame implements Constants{
                if(msg!=null) {
                   jtaChat.append("Message from: "+name+": "+ msg + "\n");
                   prevMsgs.add(name+": "+msg);
-                  for(PrintWriter pw : chatOuts){
-                     pw.println(name+": "+msg);
+                  String data = name+": "+msg;
+                  
+                  for(PrintWriter pw : tcpConnections){
+                     pw.println(data);
                      pw.flush();
+                  }
+                  
+                  for(InetAddress i : udpConnections){
+                     DatagramPacket sendPacket = new DatagramPacket(data.getBytes(), data.getBytes().length, i, PORT);                   
+                     UDPSocket.send(sendPacket);
                   }
                }
                else {
@@ -175,19 +160,140 @@ class Server extends JFrame implements Constants{
       public void terminateClient(){
          jtaChat.append(name+" Disconnected.." + "\n" );
          
-         for(int i=0; i < chatOuts.size(); i++){     
-            if(out==chatOuts.get(i)) {
-               chatOuts.remove(i);
+         for(int i=0; i < tcpConnections.size(); i++){     
+            if(out==tcpConnections.get(i)) {
+               tcpConnections.remove(i);
                jtaChat.append(name+" removed from Broadcast" + "\n" );
             }
          }
-         for(PrintWriter pw : chatOuts){
-            pw.println(name+" has disconnected");
+         String data = name+" has disconnected";
+         for(PrintWriter pw : tcpConnections){
+            pw.println(data);
             pw.flush();
          }
+         
+         for(InetAddress i : udpConnections){
+            DatagramPacket sendPacket = new DatagramPacket(data.getBytes(), data.getBytes().length, i, PORT);                   
+            try{
+               UDPSocket.send(sendPacket);
+            }catch(IOException ioe){
+               jtaChat.append("Error sending UDP message to " + i.getHostAddress() + "\n");
+            }   
+         }
+         
          out.close();
       }
    }
+   
+   
+   /**
+   *thread class to handle chat connecitons using UDP
+    */
+   public class UDPListener extends Thread{
+      /*
+      *listens for incoming UDP messages
+      *adds to list of known UDP connection addresses
+      *@author Ted Fitzgerald
+      *@since 3-10-16
+      */
+      public UDPListener(){
+         start();
+      }
+      
+      public void run(){
+         try{
+            UDPSocket = new DatagramSocket(PORT);
+         }catch(SocketException se){
+            jtaMain.append("Error creating UDP soceket\n");
+         }   
+         DatagramPacket messagePacket = new DatagramPacket(UDP_PACKET_SIZE, UDP_PACKET_SIZE.length);                   
+         while(true){ 
+            try{
+               UDPSocket.receive(messagePacket);
+               new UDPMessageHandler(messagePacket);
+            }catch(IOException ioe){
+               jtaChat.append("Error recieveing UDP packet\n");
+            } 
+         }
+      }
+   }
+   
+   public class UDPMessageHandler extends Thread{
+      private DatagramPacket packet;
+      private InetAddress ip;
+      private int port;
+      
+      public UDPMessageHandler(DatagramPacket packet){
+         this.packet = packet;
+         start();
+      }
+      
+      public void run(){
+         String data = new String(packet.getData());
+         ip = packet.getAddress();
+         port = packet.getPort(); 
+         
+         //check if disconnect message
+         if(data == UDP_DISCONECT){
+            terminateClient(data.substring(UDP_DISCONECT.length() +1));
+         }
+         
+         //do stuff with IP
+         if(!udpConnections.contains(ip)){
+            //if we don;t already know about this connection, add it to the list and send it previous messages
+            udpConnections.add(ip);
+            if(prevMsgs.size()!=0){
+               for(String s: prevMsgs){
+                  DatagramPacket sendPacket = new DatagramPacket(s.getBytes(), s.getBytes().length, ip, port);                   
+                  try{
+                     UDPSocket.send(sendPacket);
+                  }catch(IOException ioe){
+                     jtaChat.append("Error sending UDP message to " + ip + "\n");
+                  }  
+               }
+            }
+         }
+         
+         //do stuff with message
+         prevMsgs.add(data);
+         //send to tcp connections
+         for(PrintWriter pw : tcpConnections){
+            pw.println(data);
+            pw.flush();
+         }
+         
+         //send to UDP connections
+         for(InetAddress i : udpConnections){
+            DatagramPacket sendPacket = new DatagramPacket(data.getBytes(), data.getBytes().length, i, port);                   
+            try{
+               UDPSocket.send(sendPacket);
+            }catch(IOException ioe){
+               jtaChat.append("Error sending UDP message to " + i.getHostAddress() + "\n");
+            }  
+         }
+
+      }
+      
+      private void terminateClient(String name){
+         jtaChat.append(name+" removed from Broadcast" + "\n" );
+         udpConnections.remove(ip);
+         for(PrintWriter pw : tcpConnections){
+            pw.println(name+" has disconnected");
+            pw.flush();
+         }
+         for(InetAddress i : udpConnections){
+            String data = name+" has disconnected";
+            DatagramPacket sendPacket = new DatagramPacket(data.getBytes(), data.getBytes().length, i, port);                   
+            try{
+               UDPSocket.send(sendPacket);
+            }catch(IOException ioe){
+               jtaChat.append("Error sending UDP message to " + i.getHostAddress() + "\n");
+            }  
+         }
+      }
+      
+   }
+   
    
   
    /**
@@ -217,7 +323,7 @@ class Server extends JFrame implements Constants{
       add(jpM);
       add(jpC);
             
-      setSize(500,500);
+      setSize(600,500);
       setVisible(true);
       setLocationRelativeTo(null);
       setDefaultCloseOperation(EXIT_ON_CLOSE);

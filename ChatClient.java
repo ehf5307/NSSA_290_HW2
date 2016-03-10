@@ -78,7 +78,6 @@ public class ChatClient extends JFrame implements Constants {
                BufferedReader in = new BufferedReader(new InputStreamReader(cs.getInputStream()));
                final PrintWriter out = new PrintWriter(new OutputStreamWriter(cs.getOutputStream()));
                   out.println(name); //tell the server our name 
-                  out.println(CHAT); //tell the server that we are a chat connection
                   out.flush();
               
                while(true){
