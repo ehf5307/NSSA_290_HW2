@@ -13,10 +13,13 @@ import javax.swing.*;
 import javax.swing.border.*;
 
 public class ChatClient extends JFrame implements Constants {
+   private JPanel jpMessage;
+   private JPanel jpInformation;
+   
    private JTextArea jtaSendText;
    private JTextArea jtaRecvText;
-   private JPanel 	jpTextPanel;
-   private JPanel 	jpTextPane2;
+   private JTextArea jtaInfo;
+   private JPanel 	jpSendRec;
    private JButton 	jbSend;
    private JButton 	jbExit;
    private JPanel 	jpButtonPanel;
@@ -36,43 +39,10 @@ public class ChatClient extends JFrame implements Constants {
       }
       catch(UnknownHostException uhe){System.out.println("Invalid IP");} 
       
-      // setup the frame components
-   	// Text areas first
-      jtaRecvText = new JTextArea("",20,30);
-      jtaRecvText.setBorder(new EtchedBorder());
-      jtaRecvText.setEditable(false);
-      jtaRecvText.setLineWrap( true );           // wrap to new lines 
-      jtaRecvText.setWrapStyleWord( true );      // split on whole words
+      createGUI();
       
-      jtaSendText = new JTextArea("Send text",5,30);
-      jtaSendText.setBorder(new EtchedBorder());
-      jtaSendText.setLineWrap( true );           // wrap to new lines 
-      jtaSendText.setWrapStyleWord( true );      // split on whole words
-   
-      jpTextPanel = new JPanel();
-      jpTextPane2 = new JPanel();
-   
-   	// place the text areas in JScrollPanes
-      JScrollPane recvPane = new JScrollPane(jtaRecvText);
-      JScrollPane jbSendPane = new JScrollPane(jtaSendText);
-   
-      jpTextPanel.add(recvPane);
-      jpTextPane2.add(jbSendPane);
-   	
-   	// Buttons send & next
-      jbSend = new JButton("Send");
-      jbSend.setEnabled(false);
-      jpButtonPanel = new JPanel();
-      jpButtonPanel.add(jbSend);
-         
-      // now add the components to the frame
-      setLayout(new BorderLayout());
-      add(jpTextPanel, BorderLayout.NORTH);
-      add(jpTextPane2,  BorderLayout.CENTER);
-      add(jpButtonPanel,BorderLayout.SOUTH);
-     
       //open connection
-      jtaRecvText.setText("Chat server is not running.");
+      //jtaRecvText.setText("Chat server is not running.");
       boolean restart = false;
       new ConnectionThread(restart);
       
@@ -97,7 +67,7 @@ public class ChatClient extends JFrame implements Constants {
       
       public void run(){
          boolean connected = false;
-         System.out.println(HOST);
+         //System.out.println(HOST);
          
          while(!connected){
             try {
@@ -132,7 +102,7 @@ public class ChatClient extends JFrame implements Constants {
                   }});
                
                jbSend.setEnabled(true);
-               new inputThread(cs, jtaRecvText, jbSend, in);
+               new InputThread(cs, jtaRecvText, jbSend, in);
                //new outputThread(cs, jtaSendText, jtaRecvText, jbSend, out);
             }
             
@@ -154,7 +124,7 @@ public class ChatClient extends JFrame implements Constants {
    /**
    *thread class for handling reciept of messages
    */
-   class inputThread extends Thread{
+   class InputThread extends Thread{
       Socket cs;
       BufferedReader in;
       JTextArea jtaRecvText;
@@ -166,7 +136,7 @@ public class ChatClient extends JFrame implements Constants {
       *@param jbSend, the send button
       @param in, the BufferedReader input from server
       */
-      public inputThread(Socket cs, JTextArea jtaRecvText, JButton jbSend, BufferedReader in){
+      public InputThread(Socket cs, JTextArea jtaRecvText, JButton jbSend, BufferedReader in){
          this.cs = cs;      
          this.jtaRecvText = jtaRecvText;
          this.jbSend = jbSend;
@@ -206,5 +176,59 @@ public class ChatClient extends JFrame implements Constants {
       }//end run
    }//end inputthread class
    
+   /**
+   *Creates the Gui  - code moved from constructor
+   *@author Ted Fitzgerald
+   *@since 3-10-16
+   */
+   private void createGUI(){
+      // setup the frame components
+   	// Text areas first
+      jtaRecvText = new JTextArea("",20,30);
+      jtaRecvText.setBorder(new EtchedBorder());
+      jtaRecvText.setEditable(false);
+      jtaRecvText.setLineWrap( true );           // wrap to new lines 
+      jtaRecvText.setWrapStyleWord( true );      // split on whole words
+      
+      jtaSendText = new JTextArea("Send text",5,30);
+      jtaSendText.setBorder(new EtchedBorder());
+      jtaSendText.setLineWrap( true );           // wrap to new lines 
+      jtaSendText.setWrapStyleWord( true );      // split on whole words
+   
+      jpSendRec = new JPanel(new BorderLayout());
+   
+   	// place the text areas in JScrollPanes
+      JScrollPane recvPane = new JScrollPane(jtaRecvText);
+      JScrollPane jbSendPane = new JScrollPane(jtaSendText);
+   
+      jpSendRec.add(recvPane, BorderLayout.NORTH);
+      jpSendRec.add(jbSendPane, BorderLayout.SOUTH);
+   	
+   	// Buttons send & next
+      jbSend = new JButton("Send");
+      jbSend.setEnabled(false);
+      jpButtonPanel = new JPanel();
+      jpButtonPanel.add(jbSend);
+         
+      // now add the messaging componnets to the left panel
+      jpMessage = new JPanel(new BorderLayout());
+      jpMessage.add(new JLabel("Messages"), BorderLayout.NORTH);
+      jpMessage.add(jpSendRec,  BorderLayout.CENTER);
+      jpMessage.add(jpButtonPanel,BorderLayout.SOUTH);
+      
+      //set up information panel
+      jpInformation = new JPanel(new BorderLayout());    
+      jtaInfo = new JTextArea(20,20);
+      jtaInfo.setEditable(false);
+      JScrollPane jspInfo = new JScrollPane(jtaInfo);
+      jpInformation.add(new JLabel("Connection Information"), BorderLayout.NORTH);
+      jpInformation.add(jspInfo);
+      
+      setLayout(new GridLayout(0,2));
+      add(jpMessage);
+      add(jpInformation);
+      
+     
 
+   }
 }
