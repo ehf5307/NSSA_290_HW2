@@ -109,6 +109,9 @@ public class Launcher extends JFrame implements ActionListener {
       howConnect.add(udpConnect);
       howConnect.add(tcpConnect);
 
+      // Listener for radio buttons
+      udpConnect.addActionListener(this);
+      tcpConnect.addActionListener(this);
        
       add(jpEast, BorderLayout.EAST);
 
@@ -126,13 +129,15 @@ public class Launcher extends JFrame implements ActionListener {
       Object choice = ae.getSource();  
       String sChoice = ae.getActionCommand(); 
       
-      if( choice == jbStart ){
+      if( choice == jbStart )
+      {
       
          String name = jtfName.getText();
          String ip = jtfIp.getText();
+         int port = Integer.parseInt(jtfPort.getText());
            
-         if( !name.equals("") && !ip.equals("")){
-            new ChatClient(name,ip);
+         if( !name.equals("") && !ip.equals("") && port != 0){
+            new ChatClient(name,ip, port);
             setVisible(false);
          
          }
