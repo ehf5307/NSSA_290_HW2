@@ -26,6 +26,7 @@ public class Launcher extends JFrame implements ActionListener {
    private JButton jbExit;
    private JTextField jtfName; 
    private JTextField jtfIp;
+   private JTextField jtfPort;
    private JMenuItem mItemHowToplayGame = null;
    private JMenuItem mItemExit = null;  
    private JMenuItem mItemNavigatingThroughGUI= null;  
@@ -82,6 +83,35 @@ public class Launcher extends JFrame implements ActionListener {
    
       jbStart.addActionListener( this );
       jbExit.addActionListener( this );
+      
+      /* East for UDP or TCP connects */
+      
+      // new panel
+      JPanel jpEast = new JPanel();
+      
+      JLabel label = new JLabel("Port");
+      jpEast.add(label); 
+      label.setForeground(Color.RED);
+      jpEast.add(jtfPort = new JTextField("",5));  
+           
+      // udp radio button
+      JRadioButton udpConnect = new JRadioButton("UPD Connect");      
+      jpEast.add(udpConnect);
+
+      JRadioButton tcpConnect = new JRadioButton("TCP Connect");
+      jpEast.add(tcpConnect); 
+      
+      
+      // new button group 
+      ButtonGroup howConnect = new ButtonGroup(); 
+
+      // add buttons to button group 
+      howConnect.add(udpConnect);
+      howConnect.add(tcpConnect);
+
+       
+      add(jpEast, BorderLayout.EAST);
+
       
       // Size the GUI and MAKE IT VISIBLE!
       pack();
