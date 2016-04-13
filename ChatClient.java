@@ -26,18 +26,24 @@ public class ChatClient extends JFrame implements Constants {
    private JPanel 	jpRadioPanel;
    public InetAddress HOST;
    public String name;
+   public int port;
+   
    
    /** 
    *Constructor sets up the chat panel
    *@param name, the users name
    *@param HOST, the ip address of the server
+   *@param port, port user wants to connect on
    */
-   public ChatClient(String name, String HOST) {
+   public ChatClient(String name, String HOST, int port) {
       this.name = name;
+      this.port = port;
+      
       try{
          this.HOST = InetAddress.getByName(HOST);
       }
       catch(UnknownHostException uhe){System.out.println("Invalid IP");} 
+      catch(NumberFormatException nfe){System.out.println("Invalid Port");}
       
       createGUI();
       
