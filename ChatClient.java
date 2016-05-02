@@ -181,6 +181,105 @@ public class ChatClient extends JFrame implements Constants {
       }//end run
    }//end inputthread class
    
+   // Class for UDP Connection
+   class udpConnection extends Thread
+   {
+      private DatagramSocket UDPSocket;
+      private InetAddress ip;
+      private int port;
+      
+      // passes port number and ip address
+      public udpConnection(int _port, InetAddress _ip) throws SocketException 
+      {
+         this.port = _port;
+         this.ip = _ip;
+         this.UDPSocket = new DatagramSocket();
+         this.UDPSocket.connect(ip, port);
+      } // end udpConnection 
+      
+      public void run()
+      {
+         try
+         {
+            // New input stream
+            BufferedReader fromClient = new BufferedReader(new InputStreamReader(System.in));
+            
+            while(true)
+            {
+               // create byte to actually send message
+               String messageSent = fromClient.readLine();
+               
+               
+               // create new Byte to send data
+               byte[] actualData = new byte[1024];
+               messageSent = fromClient.getBytes();
+         
+               // make packet look pretty
+               DatagramPacket packMessage = new DatagramPacket(actualData, actualData.length, ip, port);
+               
+               // now send UDP Packet to the server
+               UDPSocket.send(packMessage);
+               
+               Thread.yield();
+               
+            } // end while loop
+            
+         } // end try
+         
+         catch(IOException e)
+         {
+            System.out.println(e);
+         } // end catch   
+      } // end run
+   
+   } // end udpSend class
+   
+   class ReceiveUDP extends Thread
+   {
+      private DatagramSocket UDPSocket;
+      
+      // CONSTRUCTOR
+      public ReceiveUDP(DatagramSocket _UDPSocket) throws SocketException
+      {
+         this.UDPSocket = _UDPSocket;
+      } // end recieveUDP constructor
+      
+      public void run()
+      {
+        // make array of bytes to recieve message
+        byte[] dataReceived = new byte[1024];
+        
+        while(true)
+        {
+            // this is where the data will be coming into
+            DatagramPacket receiveMessage = new DatagramPacket(dataReceived, dataReceived.length);
+            
+            try
+            {
+               // look for message from server
+               UDPSocket.receive(receiveMessage);
+               
+               // unpack the packet
+               String answer = new String(receiveMessage.getData(), 0, receiveMessage.getLength());
+               
+               
+               // print out on screen
+               System.out.println(answer);
+               
+               Thread.yield();
+            } // end try
+            
+            catch(IOException e)
+            {
+               System.out.println(e); 
+            }
+      
+        } // end while loop 
+        
+              } // end run method
+      
+   } // end class recieveUDP
+   
    /**
    *Creates the Gui  - code moved from constructor
    *@author Ted Fitzgerald
