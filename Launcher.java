@@ -18,7 +18,7 @@ import javax.swing.JDialog;
 /* *
 *class to create interface which allows plays enters their names 
 */
-public class Launcher extends JFrame implements ActionListener {
+public class Launcher extends JFrame implements ActionListener{
 
 
    // instance attributes
@@ -29,13 +29,16 @@ public class Launcher extends JFrame implements ActionListener {
    private JTextField jtfPort;
    private JMenuItem mItemHowToplayGame = null;
    private JMenuItem mItemExit = null;  
-   private JMenuItem mItemNavigatingThroughGUI= null;  
+   private JMenuItem mItemNavigatingThroughGUI= null; 
+   private JRadioButton udpConnect; 
+   private JRadioButton tcpConnect;
 
    /** The main method
    *@param args, command line arguments. not utilized in this release
     */
    public static void main(String [] args) {
-      new Launcher();
+         new Launcher();
+
    }// end main
       
     /** Constructor */
@@ -95,10 +98,10 @@ public class Launcher extends JFrame implements ActionListener {
       jpEast.add(jtfPort = new JTextField("",5));  
            
       // udp radio button
-      JRadioButton udpConnect = new JRadioButton("UPD Connect");      
+      udpConnect = new JRadioButton("UPD Connect");      
       jpEast.add(udpConnect);
 
-      JRadioButton tcpConnect = new JRadioButton("TCP Connect");
+      tcpConnect = new JRadioButton("TCP Connect");
       jpEast.add(tcpConnect); 
       
       
@@ -129,9 +132,12 @@ public class Launcher extends JFrame implements ActionListener {
       Object choice = ae.getSource();  
       String sChoice = ae.getActionCommand(); 
       
-      if( choice == jbStart )
-      {
+      // UDP Choice
+      Object uChoice = ae.getSource();
+      String suChoice = ae.getActionCommand();
       
+      if( choice == jbStart && tcpConnect.isSelected())
+      {
          String name = jtfName.getText();
          String ip = jtfIp.getText();
          int port = Integer.parseInt(jtfPort.getText());
@@ -141,12 +147,44 @@ public class Launcher extends JFrame implements ActionListener {
             setVisible(false);
          
          }
+         
          else{
             JOptionPane.showMessageDialog(null, "Please fill in all fields");
           
          } 
+         
+         /* Start ConnectionThreadHere
+         ConnectionThread startMe = new ConnectionThread();
+         Thread t = new Thread(startMe);
+         t.start();
+         */ 
       
       }// end if 
+      
+      else if( choice == jbStart && udpConnect.isSelected() )
+      {
+         String name = jtfName.getText();
+         String ip = jtfIp.getText();
+         int port = Integer.parseInt(jtfPort.getText());
+           
+         if( !name.equals("") && !ip.equals("") && port != 0){
+            new ChatClient(name,ip, port);
+            setVisible(false);
+         
+         }
+         
+         else{
+            JOptionPane.showMessageDialog(null, "Please fill in all fields");
+          
+         } 
+         
+         /* Start ConnectionThreadHere
+         ConnectionThread startMe = new ConnectionThread();
+         Thread t = new Thread(startMe);
+         t.start();
+         */ 
+      } // end else if 
+
       else if( choice == jbExit || choice == mItemExit ){ 
       
           // to show meassge JDialog ( yes , No)
