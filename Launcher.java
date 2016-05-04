@@ -136,14 +136,14 @@ public class Launcher extends JFrame implements ActionListener{
       Object uChoice = ae.getSource();
       String suChoice = ae.getActionCommand();
       
-      if( choice == jbStart && tcpConnect.isSelected())
+      if( choice == jbStart)
       {
          String name = jtfName.getText();
          String ip = jtfIp.getText();
          int port = Integer.parseInt(jtfPort.getText());
            
          if( !name.equals("") && !ip.equals("") && port != 0){
-            new ChatClient(name,ip, port);
+            new ChatClient(name,ip, port,  tcpConnect.isSelected());
             setVisible(false);
          
          }
@@ -153,38 +153,11 @@ public class Launcher extends JFrame implements ActionListener{
           
          } 
          
-         /* Start ConnectionThreadHere
-         ConnectionThread startMe = new ConnectionThread();
-         Thread t = new Thread(startMe);
-         t.start();
-         */ 
+         
       
       }// end if 
       
-      else if( choice == jbStart && udpConnect.isSelected() )
-      {
-         String name = jtfName.getText();
-         String ip = jtfIp.getText();
-         int port = Integer.parseInt(jtfPort.getText());
-           
-         if( !name.equals("") && !ip.equals("") && port != 0){
-            new ChatClient(name,ip, port);
-            setVisible(false);
-         
-         }
-         
-         else{
-            JOptionPane.showMessageDialog(null, "Please fill in all fields");
-          
-         } 
-         
-         /* Start ConnectionThreadHere
-         ConnectionThread startMe = new ConnectionThread();
-         Thread t = new Thread(startMe);
-         t.start();
-         */ 
-      } // end else if 
-
+      
       else if( choice == jbExit || choice == mItemExit ){ 
       
           // to show meassge JDialog ( yes , No)

@@ -4,6 +4,7 @@ import java.util.*;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
+import java.util.concurrent.ConcurrentHashMap;
 
  /**
  * Multi-Threaded Server for chat 
@@ -19,7 +20,7 @@ class Server extends JFrame implements Constants{
    Vector<PrintWriter> tcpConnections = new Vector<PrintWriter>();
    //vector of all messges sent since server start
    Vector<String> prevMsgs = new Vector<String>();
-   Vector<InetAddress> udpConnections = new Vector<InetAddress>();
+   ConcurrentHashMap<InetAddress, String> udpConnections = new ConcurrentHashMap<InetAddress, String>();
 
    public DatagramSocket UDPSocket;
    //instance of the question mod class.
@@ -134,7 +135,7 @@ class Server extends JFrame implements Constants{
                      pw.flush();
                   }
                   
-                  for(InetAddress i : udpConnections){
+                  for(InetAddress i : Collections.list(udpConnections.keys())){
                      DatagramPacket sendPacket = new DatagramPacket(data.getBytes(), data.getBytes().length, i, PORT);                   
                      UDPSocket.send(sendPacket);
                   }
@@ -172,7 +173,7 @@ class Server extends JFrame implements Constants{
             pw.flush();
          }
          
-         for(InetAddress i : udpConnections){
+         for(InetAddress i : Collections.list(udpConnections.keys())){
             DatagramPacket sendPacket = new DatagramPacket(data.getBytes(), data.getBytes().length, i, PORT);                   
             try{
                UDPSocket.send(sendPacket);
@@ -229,7 +230,7 @@ class Server extends JFrame implements Constants{
       }
       
       public void run(){
-         String data = new String(packet.getData());
+         String data = new String(packet.getData() ,0 , packet.getLength());
          ip = packet.getAddress();
          port = packet.getPort(); 
          
@@ -239,9 +240,10 @@ class Server extends JFrame implements Constants{
          }
          
          //do stuff with IP
-         if(!udpConnections.contains(ip)){
+         if(!udpConnections.containsKey(ip)){
+            String udpName = data;
             //if we don;t already know about this connection, add it to the list and send it previous messages
-            udpConnections.add(ip);
+            udpConnections.put(ip, udpName);
             if(prevMsgs.size()!=0){
                for(String s: prevMsgs){
                   DatagramPacket sendPacket = new DatagramPacket(s.getBytes(), s.getBytes().length, ip, port);                   
@@ -252,6 +254,7 @@ class Server extends JFrame implements Constants{
                   }  
                }
             }
+            DatagramPacket sendPacket = new DatagramPacket(READY.getBytes(), READY.getBytes().length, ip, port);
          }
          
          //do stuff with message
@@ -263,7 +266,8 @@ class Server extends JFrame implements Constants{
          }
          
          //send to UDP connections
-         for(InetAddress i : udpConnections){
+         for(InetAddress i : Collections.list(udpConnections.keys())){
+            data = udpConnections.get(ip)+ ": " + data;
             DatagramPacket sendPacket = new DatagramPacket(data.getBytes(), data.getBytes().length, i, port);                   
             try{
                UDPSocket.send(sendPacket);
@@ -281,7 +285,7 @@ class Server extends JFrame implements Constants{
             pw.println(name+" has disconnected");
             pw.flush();
          }
-         for(InetAddress i : udpConnections){
+         for(InetAddress i : Collections.list(udpConnections.keys())){
             String data = name+" has disconnected";
             DatagramPacket sendPacket = new DatagramPacket(data.getBytes(), data.getBytes().length, i, port);                   
             try{

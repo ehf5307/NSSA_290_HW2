@@ -12,7 +12,7 @@ import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.border.*;
 
-public class ChatClient extends JFrame implements Constants throws SocketException{
+public class ChatClient extends JFrame implements Constants{
    private JPanel jpMessage;
    private JPanel jpInformation;
    
@@ -35,7 +35,7 @@ public class ChatClient extends JFrame implements Constants throws SocketExcepti
    *@param HOST, the ip address of the server
    *@param port, port user wants to connect on
    */
-   public ChatClient(String name, String HOST, int port) throws SocketException {
+   public ChatClient(String name, String HOST, int port, boolean useTCP){
       this.name = name;
       this.port = port;
       
@@ -50,7 +50,11 @@ public class ChatClient extends JFrame implements Constants throws SocketExcepti
       //open connection
       //jtaRecvText.setText("Chat server is not running.");
       boolean restart = false;
-      new ConnectionThread(restart);
+      if(useTCP){
+         new ConnectionThread(restart);
+      }else{
+         new udpConnection(restart);
+      }
       
       setDefaultCloseOperation(EXIT_ON_CLOSE);
       pack();
@@ -64,16 +68,10 @@ public class ChatClient extends JFrame implements Constants throws SocketExcepti
    /**
    *thread class for connecting to server
    */
-   class ConnectionThread extends Thread implements Runnable{
+   class ConnectionThread extends Thread{
       boolean restart; //tells this class if the connection is being restarted
-      private DatagramSocket UDPSocket;
-      private InetAddress ip;
-      private int port;
-
-      public ConnectionThread(boolean restart) throws SocketException
-      {
-         this.UDPSocket = new DatagramSocket();
-         this.UDPSocket.connect(ip, port);
+      
+      public ConnectionThread(boolean restart){
          this.restart = restart;
          start();
       }
@@ -84,10 +82,10 @@ public class ChatClient extends JFrame implements Constants throws SocketExcepti
          
          while(!connected){
             try {
-               Socket cs = new Socket(HOST, PORT);
+               Socket cs = new Socket(HOST, port);
                //create IO threads
                connected = true;
-               jtaRecvText.append("\nConnected to server.");
+               jtaInfo.append("\nConnected to server via TCP/IP.");
                BufferedReader in = new BufferedReader(new InputStreamReader(cs.getInputStream()));
                final PrintWriter out = new PrintWriter(new OutputStreamWriter(cs.getOutputStream()));
                   out.println(name); //tell the server our name 
@@ -108,25 +106,13 @@ public class ChatClient extends JFrame implements Constants throws SocketExcepti
                    (
                        new ActionListener()
                        {
-                           public void actionPerformed(ActionEvent ae)
-                           {                               
-                           // create byte to actually send message
-                              //String msg = in.readLine();
-                              
-                              // create new Byte to send data
-                              byte[] actualData = new byte[1024];
-                              //msg = in.getBytes();
-                        
-                              // make packet look pretty
-                              DatagramPacket packMessage = new DatagramPacket(actualData, actualData.length, ip, port);
-                              
-                              // now send UDP Packet to the server
-                              UDPSocket.send(packMessage);
-                              Thread.yield();
-                           } // end actionPerformed
-
-                        } // end actionListener
-                    );
+                           public void actionPerformed(ActionEvent ae){
+                         //on button click, send message
+                              jtaInfo.append("\nSending: " + jtaSendText.getText().trim() + " via TCPIP");
+                              out.println(jtaSendText.getText().trim());
+                              out.flush();
+                              jtaSendText.setText("");
+                        }});
          
 
                
@@ -150,8 +136,82 @@ public class ChatClient extends JFrame implements Constants throws SocketExcepti
       } // end run
    } // end class 
    
+   class udpConnection extends Thread{
+       boolean restart; //tells this class if the connection is being restarted
+       private DatagramSocket udpSocket;       // passes port number and ip address
+       
+       public udpConnection(boolean restart)
+       {
+          this.restart = restart;
+          start();
+       } // end udpConnection 
+       
+       public void run()
+       {
+          try
+          {
+             
+          this.udpSocket = new DatagramSocket();
+          this.udpSocket.connect(HOST, PORT);
+             // New input stream
+                        
+                // ask for old messages
+                byte[] sendData = new byte[1024];
+                byte[] receiveData = new byte[1024];
+                sendData = (name).getBytes();
+                DatagramPacket packMessage = new DatagramPacket(sendData, sendData.length, HOST, port);
+                // now send UDP Packet to the server
+                udpSocket.send(packMessage);
+                
+                while(true){
+                  DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);       
+                 udpSocket.receive(receivePacket);       
+                 String msg = new String(receivePacket.getData() ,0 , receivePacket.getLength()); 
+                  if(!msg.equals(READY)){//see if server is ready to recieve messages
+                     jtaRecvText.append("\n"+msg);
+                  }
+                  else{
+                     jtaRecvText.append("\n");
+                     break;
+                  } 
+               }
+              
+                 jbSend.addActionListener
+                   (
+                       new ActionListener()
+                       {
+                           public void actionPerformed(ActionEvent ae){
+                         //on button click, send message
+                              jtaInfo.append("\nSending: "+jtaSendText.getText().trim()+" via UDP");
+                              
+                               byte[] msg = new byte[1024];
+                               msg =  (jtaSendText.getText().trim()).getBytes();;
+                               DatagramPacket packet = new DatagramPacket(msg, msg.length, HOST, port);
+                               // now send UDP Packet to the server
+                              try{
+                                  udpSocket.send(packet);
+                              }catch(IOException ioe){
+                                 jtaInfo.append("\nError sending UDP message");
+                              }    
+                              jtaSendText.setText("");
+                        }});
+
+               
+               jbSend.setEnabled(true);
+               new ReceiveUDP(udpSocket, jtaRecvText, jbSend);
+
+          } // end try
+          
+          catch(IOException e)
+          {
+             System.out.println(e);
+          } // end catch   
+       } // end run
+    
+    } // end udpSend class
+   
    /**
-   *thread class for handling reciept of messages
+   *thread class for handling reciept of tcpip messages
    */
    class InputThread extends Thread{
       Socket cs;
@@ -165,7 +225,7 @@ public class ChatClient extends JFrame implements Constants throws SocketExcepti
       *@param jbSend, the send button
       @param in, the BufferedReader input from server
       */
-      public InputThread(Socket cs, JTextArea jtaRecvText, JButton jbSend, BufferedReader in) throws SocketException
+      public InputThread(Socket cs, JTextArea jtaRecvText, JButton jbSend, BufferedReader in)
       {
          this.cs = cs;      
          this.jtaRecvText = jtaRecvText;
@@ -209,12 +269,17 @@ public class ChatClient extends JFrame implements Constants throws SocketExcepti
    
    class ReceiveUDP extends Thread
    {
-      private DatagramSocket UDPSocket;
+      private DatagramSocket udpSocket;
+      private JTextArea jtaRecvText;
+      private JButton jbSend;
       
       // CONSTRUCTOR
-      public ReceiveUDP(DatagramSocket _UDPSocket) throws SocketException
+      public ReceiveUDP(DatagramSocket udpSocket, JTextArea jtaRecvText, JButton jbSend)
       {
-         this.UDPSocket = _UDPSocket;
+         this.udpSocket = udpSocket;
+         this.jtaRecvText = jtaRecvText;
+         this.jbSend = jbSend;
+         start();
       } // end recieveUDP constructor
       
       public void run()
@@ -230,16 +295,15 @@ public class ChatClient extends JFrame implements Constants throws SocketExcepti
             try
             {
                // look for message from server
-               UDPSocket.receive(receiveMessage);
+               udpSocket.receive(receiveMessage);
                
                // unpack the packet
-               String answer = new String(receiveMessage.getData(), 0, receiveMessage.getLength());
+               String msg = new String(receiveMessage.getData(), 0, receiveMessage.getLength());
                
                
                // print out on screen
-               System.out.println(answer);
+               jtaRecvText.setText(jtaRecvText.getText()+msg+"\n");
                
-               Thread.yield();
             } // end try
             
             catch(IOException e)
