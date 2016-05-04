@@ -244,6 +244,7 @@ class Server extends JFrame implements Constants{
             String udpName = data;
             //if we don;t already know about this connection, add it to the list and send it previous messages
             udpConnections.put(ip, udpName);
+            jtaMain.append("\nAdding UDP Connection: "+udpName +"@"+ip.getHostAddress()+":"+port);
             if(prevMsgs.size()!=0){
                for(String s: prevMsgs){
                   DatagramPacket sendPacket = new DatagramPacket(s.getBytes(), s.getBytes().length, ip, port);                   
@@ -255,6 +256,14 @@ class Server extends JFrame implements Constants{
                }
             }
             DatagramPacket sendPacket = new DatagramPacket(READY.getBytes(), READY.getBytes().length, ip, port);
+            try{
+               UDPSocket.send(sendPacket);
+            }catch(IOException ioe){
+               jtaMain.append("\nError sending to: " +udpName+ " via UDP");
+            }
+            data = udpName + "Joined the chat";      
+         }else{
+            data = udpConnections.get(ip)+ ": " + data;
          }
          
          //do stuff with message
@@ -267,7 +276,6 @@ class Server extends JFrame implements Constants{
          
          //send to UDP connections
          for(InetAddress i : Collections.list(udpConnections.keys())){
-            data = udpConnections.get(ip)+ ": " + data;
             DatagramPacket sendPacket = new DatagramPacket(data.getBytes(), data.getBytes().length, i, port);                   
             try{
                UDPSocket.send(sendPacket);

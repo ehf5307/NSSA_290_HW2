@@ -43,7 +43,9 @@ public class ChatClient extends JFrame implements Constants{
          this.HOST = InetAddress.getByName(HOST);
       }
       catch(UnknownHostException uhe){System.out.println("Invalid IP");} 
-      catch(NumberFormatException nfe){System.out.println("Invalid Port");}
+      catch(NumberFormatException nfe){
+         System.out.println("Invalid IP");
+      }
       
       createGUI();
       
@@ -244,6 +246,7 @@ public class ChatClient extends JFrame implements Constants{
                //print messages
                String msg = in.readLine();
                if(msg!=null) {
+                  jtaInfo.append("'\nRecieved: " +msg+" via TCP");
                   jtaRecvText.setText(jtaRecvText.getText()+msg+"\n");
                } 
                else {
