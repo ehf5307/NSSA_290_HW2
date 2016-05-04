@@ -101,7 +101,7 @@ public class Launcher extends JFrame implements ActionListener{
       udpConnect = new JRadioButton("UPD Connect");      
       jpEast.add(udpConnect);
 
-      tcpConnect = new JRadioButton("TCP Connect");
+      tcpConnect = new JRadioButton("TCP Connect", true);
       jpEast.add(tcpConnect); 
       
       
@@ -129,13 +129,11 @@ public class Launcher extends JFrame implements ActionListener{
     
    //method to perform action of buttons
    public void actionPerformed(ActionEvent ae){
+      jbStart.setEnabled(false); //disable to prevent double launch
+      
       Object choice = ae.getSource();  
       String sChoice = ae.getActionCommand(); 
-      
-      // UDP Choice
-      Object uChoice = ae.getSource();
-      String suChoice = ae.getActionCommand();
-      
+            
       if( choice == jbStart)
       {
          String name = jtfName.getText();
@@ -156,10 +154,10 @@ public class Launcher extends JFrame implements ActionListener{
          
       
       }// end if 
+       
+      jbStart.setEnabled(true); //re enable
       
-      
-      else if( choice == jbExit || choice == mItemExit ){ 
-      
+      if( choice == jbExit || choice == mItemExit ){ 
           // to show meassge JDialog ( yes , No)
          JDialog.setDefaultLookAndFeelDecorated(true);
          int response = JOptionPane.showConfirmDialog(null, "Do you want to exit the chat?", "Confirm",

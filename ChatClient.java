@@ -72,6 +72,8 @@ public class ChatClient extends JFrame implements Constants{
    */
    class ConnectionThread extends Thread{
       boolean restart; //tells this class if the connection is being restarted
+      private Socket cs;
+      private BufferedReader in;
       
       public ConnectionThread(boolean restart){
          this.restart = restart;
@@ -84,11 +86,11 @@ public class ChatClient extends JFrame implements Constants{
          
          while(!connected){
             try {
-               Socket cs = new Socket(HOST, port);
+               cs = new Socket(HOST, port);
                //create IO threads
                connected = true;
                jtaInfo.append("\nConnected to server via TCP/IP.");
-               BufferedReader in = new BufferedReader(new InputStreamReader(cs.getInputStream()));
+               in = new BufferedReader(new InputStreamReader(cs.getInputStream()));
                final PrintWriter out = new PrintWriter(new OutputStreamWriter(cs.getOutputStream()));
                   out.println(name); //tell the server our name 
                   out.flush();
@@ -103,8 +105,10 @@ public class ChatClient extends JFrame implements Constants{
                      break;
                   } 
                }
-              
-                 jbSend.addActionListener
+               
+         
+                  
+                  jbSend.addActionListener
                    (
                        new ActionListener()
                        {
@@ -115,13 +119,12 @@ public class ChatClient extends JFrame implements Constants{
                               out.flush();
                               jtaSendText.setText("");
                         }});
-         
-
-               
-               jbSend.setEnabled(true);
-               new InputThread(cs, jtaRecvText, jbSend, in);
-               //new outputThread(cs, jtaSendText, jtaRecvText, jbSend, out);
-            }
+                        
+                  jbSend.setEnabled(true);
+                  InputThread it = new InputThread(cs, jtaRecvText, jbSend, in);
+                  System.out.println(it);
+                        
+               }
 
             catch(UnknownHostException uhe) {
                jtaRecvText.append("\nUnable to connect to host.");
@@ -133,8 +136,12 @@ public class ChatClient extends JFrame implements Constants{
                   restart = false;
                }   
             }
+            
          } // end while loop 
-      
+         
+               
+                              
+
       } // end run
    } // end class 
    
@@ -160,12 +167,15 @@ public class ChatClient extends JFrame implements Constants{
                 // ask for old messages
                 byte[] sendData = new byte[1024];
                 byte[] receiveData = new byte[1024];
+                
+                jtaInfo.append("\nIntroduction to server, asking for old messages");
                 sendData = (name).getBytes();
                 DatagramPacket packMessage = new DatagramPacket(sendData, sendData.length, HOST, port);
                 // now send UDP Packet to the server
                 udpSocket.send(packMessage);
                 
                 while(true){
+                  jtaInfo.append("\nWaiting for old messages");
                   DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);       
                  udpSocket.receive(receivePacket);       
                  String msg = new String(receivePacket.getData() ,0 , receivePacket.getLength()); 
@@ -173,6 +183,7 @@ public class ChatClient extends JFrame implements Constants{
                      jtaRecvText.append("\n"+msg);
                   }
                   else{
+                     jtaInfo.append("\nStarting normal chat mode");
                      jtaRecvText.append("\n");
                      break;
                   } 
@@ -200,7 +211,8 @@ public class ChatClient extends JFrame implements Constants{
 
                
                jbSend.setEnabled(true);
-               new ReceiveUDP(udpSocket, jtaRecvText, jbSend);
+               ReceiveUDP ru = new ReceiveUDP(udpSocket, jtaRecvText, jbSend);
+               System.out.println(ru);
 
           } // end try
           
@@ -210,7 +222,7 @@ public class ChatClient extends JFrame implements Constants{
           } // end catch   
        } // end run
     
-    } // end udpSend class
+    } // end udpsend class
    
    /**
    *thread class for handling reciept of tcpip messages
@@ -220,7 +232,6 @@ public class ChatClient extends JFrame implements Constants{
       BufferedReader in;
       JTextArea jtaRecvText;
       JButton jbSend;
-      
        /**
       *@param cs, the socket
       *@param jtaRecvText, the text area to show messages from server
@@ -229,6 +240,7 @@ public class ChatClient extends JFrame implements Constants{
       */
       public InputThread(Socket cs, JTextArea jtaRecvText, JButton jbSend, BufferedReader in)
       {
+      
          this.cs = cs;      
          this.jtaRecvText = jtaRecvText;
          this.jbSend = jbSend;
@@ -241,7 +253,7 @@ public class ChatClient extends JFrame implements Constants{
               
             //wait for new messages       
             while(true){
-               System.out.println("Waiting for new messages");
+               jtaInfo.append("\nWaiting for new messages");
                
                //print messages
                String msg = in.readLine();
@@ -292,6 +304,7 @@ public class ChatClient extends JFrame implements Constants{
         
         while(true)
         {
+               jtaInfo.append("\nWaiting for new messages");
             // this is where the data will be coming into
             DatagramPacket receiveMessage = new DatagramPacket(dataReceived, dataReceived.length);
             
