@@ -4,7 +4,6 @@ import java.util.*;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
-import java.util.concurrent.ConcurrentHashMap;
 
  /**
  * Multi-Threaded Server for chat 
@@ -20,7 +19,7 @@ class Server extends JFrame implements Constants{
    Vector<PrintWriter> tcpConnections = new Vector<PrintWriter>();
    //vector of all messges sent since server start
    Vector<String> prevMsgs = new Vector<String>();
-   ConcurrentHashMap<InetAddress, String> udpConnections = new ConcurrentHashMap<InetAddress, String>();
+   Vector<InetAddress> udpConnections = new Vector<InetAddress>();
 
    public DatagramSocket UDPSocket;
    //instance of the question mod class.
@@ -131,13 +130,13 @@ class Server extends JFrame implements Constants{
                   String data = name+": "+msg;
                   
                   for(PrintWriter pw : tcpConnections){
-                     jtaChat.append("Forwarding TCP message from: "+name+": "+ msg + " |to TCP connection "+(tcpConnections.indexOf(pw)+1)+"/"+tcpConnections.size()+"\n");
+                     jtaChat.append("Forwarding TCP message: "+name+": "+ msg + " |to TCP connection "+(tcpConnections.indexOf(pw)+1)+"/"+tcpConnections.size()+"\n");
                      pw.println(data);
                      pw.flush();
                   }
                   
-                  for(InetAddress i : Collections.list(udpConnections.keys())){
-                     jtaChat.append("Forwarding TCP message from: "+name+": "+ msg + " |to UDP connection "+udpConnections.get(i)+"\n");
+                  for(InetAddress i : udpConnections){
+                     jtaChat.append("Forwarding TCP message: "+name+": "+ msg + " |to UDP connection @ "+i.getHostAddress()+"\n");
                      DatagramPacket sendPacket = new DatagramPacket(data.getBytes(), data.getBytes().length, i, PORT);                   
                      try{
                         UDPSocket.send(sendPacket);
@@ -181,8 +180,8 @@ class Server extends JFrame implements Constants{
             pw.flush();
          }
          
-         for(InetAddress i : Collections.list(udpConnections.keys())){
-            jtaChat.append("Sending server message: "+ data + " |to UDP connection "+udpConnections.get(i)+"\n");
+         for(InetAddress i : udpConnections){
+            jtaChat.append("Sending server message: "+ data + " |to UDP connection @ "+i.getHostAddress()+"\n");
             DatagramPacket sendPacket = new DatagramPacket(data.getBytes(), data.getBytes().length, i, PORT);                   
             try{
                UDPSocket.send(sendPacket);
@@ -246,18 +245,17 @@ class Server extends JFrame implements Constants{
          jtaChat.append("\nIncoming UDP packet: " + data);
          //check if disconnect message
          if(data == UDP_DISCONECT){
-            terminateClient(data.substring(UDP_DISCONECT.length() +1));
+            terminateClient(ip);
          }
          
          //do stuff with IP
-         if(!udpConnections.containsKey(ip)){
-            String udpName = data;
+         if(!udpConnections.contains(ip)){
             //if we don;t already know about this connection, add it to the list and send it previous messages
-            udpConnections.put(ip, udpName);
-            jtaMain.append(udpName +" connetcted via UDP from"+ip.getHostAddress()+":"+port);
+            udpConnections.add(ip);
+            jtaMain.append("New UDP connetction from"+ip.getHostAddress()+":"+port);
             if(prevMsgs.size()!=0){
                for(String s: prevMsgs){
-                  jtaChat.append("\nForwarding old messages to " +udpName+" via UDP");
+                  jtaChat.append("\nForwarding old messages to " +ip.getHostAddress()+" via UDP");
                   DatagramPacket sendPacket = new DatagramPacket(s.getBytes(), s.getBytes().length, ip, port);                   
                   try{
                      UDPSocket.send(sendPacket);
@@ -267,47 +265,45 @@ class Server extends JFrame implements Constants{
                }
             }
             DatagramPacket sendPacket = new DatagramPacket(READY.getBytes(), READY.getBytes().length, ip, port);
+            
             try{
-               jtaChat.append("\nSending 'end of old messages signal' to " +udpName+" via UDP. Starting normal chat mode");
+               jtaChat.append("\nSending 'end of old messages signal' to " +ip.getHostAddress()+" via UDP. Starting normal chat mode");
                UDPSocket.send(sendPacket);
             }catch(IOException ioe){
-               jtaMain.append("\nError sending to: " +udpName+ " via UDP");
-            }
-            data = udpName + " joined the chat";      
+               jtaMain.append("\nError sending to: " +ip.getHostAddress()+ " via UDP");
+            }      
          }else{
-            data = udpConnections.get(ip)+ ": " + data;
+            
+            //do stuff with message
+            prevMsgs.add(data);
+            //send to tcp connections
+            for(PrintWriter pw : tcpConnections){
+               jtaChat.append("Forwarding UDP message: "+ data + " |to TCP connection "+(tcpConnections.indexOf(pw)+1)+"/"+tcpConnections.size()+"\n");
+               pw.println(data);
+               pw.flush();
+            }
+            
+            for(InetAddress i : udpConnections){
+               jtaChat.append("Forwarding UDP message: "+ data + " |to UDP connection "+i.getHostAddress()+"\n");
+               DatagramPacket sendPacket = new DatagramPacket(data.getBytes(), data.getBytes().length, i, PORT);                   
+               try{
+                  UDPSocket.send(sendPacket);
+               }catch(IOException ioe){
+                  jtaChat.append("Error sending UDP message to " + i.getHostAddress() + "\n");
+               }  
+            }
          }
-         
-         //do stuff with message
-         prevMsgs.add(data);
-         //send to tcp connections
-         for(PrintWriter pw : tcpConnections){
-            jtaChat.append("Forwarding UDP message from: "+udpConnections.get(ip)+": "+ data + " |to TCP connection "+(tcpConnections.indexOf(pw)+1)+"/"+tcpConnections.size()+"\n");
-            pw.println(data);
-            pw.flush();
-         }
-         
-         for(InetAddress i : Collections.list(udpConnections.keys())){
-            jtaChat.append("Forwarding UDP message from: "+udpConnections.get(ip)+": "+ data + " |to UDP connection "+udpConnections.get(i)+"\n");
-            DatagramPacket sendPacket = new DatagramPacket(data.getBytes(), data.getBytes().length, i, PORT);                   
-            try{
-               UDPSocket.send(sendPacket);
-            }catch(IOException ioe){
-               jtaChat.append("Error sending UDP message to " + i.getHostAddress() + "\n");
-            }  
-         }
-
       }
       
-      private void terminateClient(String name){
-         jtaChat.append(name+" removed from Broadcast" + "\n" );
+      private void terminateClient(InetAddress ip){
+         jtaChat.append(ip.getHostAddress()+" removed from Broadcast" + "\n" );
          udpConnections.remove(ip);
          for(PrintWriter pw : tcpConnections){
-            pw.println(name+" has disconnected");
+            pw.println("UDP Connection @ "+ ip.getHostAddress() +" has disconnected");
             pw.flush();
          }
-         for(InetAddress i : Collections.list(udpConnections.keys())){
-            String data = name+" has disconnected";
+         for(InetAddress i : udpConnections){
+            String data = "UDP Connection @ "+ ip.getHostAddress()+" has disconnected";
             DatagramPacket sendPacket = new DatagramPacket(data.getBytes(), data.getBytes().length, i, port);                   
             try{
                UDPSocket.send(sendPacket);

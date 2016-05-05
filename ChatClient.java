@@ -148,6 +148,11 @@ public class ChatClient extends JFrame implements Constants{
    class udpConnection extends Thread{
        boolean restart; //tells this class if the connection is being restarted
        private DatagramSocket udpSocket;       // passes port number and ip address
+       boolean connected = false;
+       boolean reset = false;
+       byte[] sendData = new byte[1024];
+       byte[] receiveData = new byte[1024];
+       DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
        
        public udpConnection(boolean restart)
        {
@@ -157,39 +162,47 @@ public class ChatClient extends JFrame implements Constants{
        
        public void run()
        {
-          try
-          {
-             
-          this.udpSocket = new DatagramSocket();
-          this.udpSocket.connect(HOST, PORT);
-             // New input stream
-                        
-                // ask for old messages
-                byte[] sendData = new byte[1024];
-                byte[] receiveData = new byte[1024];
+       
+         try{
+            
+               this.udpSocket = new DatagramSocket();
+               udpSocket.setSoTimeout(15000); //set recieve time out to 10 seconds
+               this.udpSocket.connect(HOST, PORT);
                 
-                jtaInfo.append("\nIntroduction to server, asking for old messages");
-                sendData = (name).getBytes();
-                DatagramPacket packMessage = new DatagramPacket(sendData, sendData.length, HOST, port);
-                // now send UDP Packet to the server
-                udpSocket.send(packMessage);
+               if(!reset)jtaInfo.append("\nIntroduction to server, asking for old messages");
                 
-                while(true){
-                  jtaInfo.append("\nWaiting for old messages");
-                  DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);       
-                 udpSocket.receive(receivePacket);       
-                 String msg = new String(receivePacket.getData() ,0 , receivePacket.getLength()); 
-                  if(!msg.equals(READY)){//see if server is ready to recieve messages
-                     jtaRecvText.append("\n"+msg);
+               sendData = (name).getBytes();
+               DatagramPacket packMessage = new DatagramPacket(sendData, sendData.length, HOST, port);
+               try{
+                  //DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);       
+                  udpSocket.send(packMessage);
+                  if(!reset)jtaInfo.append("\nWaiting for old messages");
+                  udpSocket.receive(receivePacket);       
+               }catch(SocketTimeoutException ste){
+                  jtaRecvText.append("\nFailed to recieve older messages from server");
+                  reset = true;
+               }   
+               
+               if(!reset){
+                  reset = false;
+                  System.out.println("set rest = false");
+                  udpSocket.setSoTimeout(0);
+                  
+                  while(true){       
+                     String msg = new String(receivePacket.getData() ,0 , receivePacket.getLength()); 
+                     if(!msg.equals(READY)){//see if server is ready to recieve messages
+                        jtaRecvText.append("\n"+msg);
+                     }
+                     else{
+                        jtaInfo.append("\nStarting normal chat mode");
+                        jtaRecvText.append("\n");
+                        break;
+                     } 
                   }
-                  else{
-                     jtaInfo.append("\nStarting normal chat mode");
-                     jtaRecvText.append("\n");
-                     break;
-                  } 
+                      
                }
               
-                 jbSend.addActionListener
+              jbSend.addActionListener
                    (
                        new ActionListener()
                        {
@@ -198,7 +211,7 @@ public class ChatClient extends JFrame implements Constants{
                               jtaInfo.append("\nSending: "+jtaSendText.getText().trim()+" via UDP");
                               
                                byte[] msg = new byte[1024];
-                               msg =  (jtaSendText.getText().trim()).getBytes();;
+                               msg =  (name+": "+jtaSendText.getText().trim()).getBytes();;
                                DatagramPacket packet = new DatagramPacket(msg, msg.length, HOST, port);
                                // now send UDP Packet to the server
                               try{
@@ -210,10 +223,9 @@ public class ChatClient extends JFrame implements Constants{
                         }});
 
                
-               jbSend.setEnabled(true);
+               jbSend.setEnabled(true); //set time out to off for normal chat mode
                ReceiveUDP ru = new ReceiveUDP(udpSocket, jtaRecvText, jbSend);
                System.out.println(ru);
-
           } // end try
           
           catch(IOException e)
@@ -301,24 +313,31 @@ public class ChatClient extends JFrame implements Constants{
       {
         // make array of bytes to recieve message
         byte[] dataReceived = new byte[1024];
+         jtaInfo.append("\nWaiting for new messages");
         
         while(true)
         {
-               jtaInfo.append("\nWaiting for new messages");
             // this is where the data will be coming into
             DatagramPacket receiveMessage = new DatagramPacket(dataReceived, dataReceived.length);
-            
+            try{
+               udpSocket.setSoTimeout(999999999);
+            }catch(SocketException  se){
+               jtaInfo.append("\nFailed to set socket time out");
+            }
+
             try
             {
                // look for message from server
-               udpSocket.receive(receiveMessage);
+               try{
+                  udpSocket.receive(receiveMessage);
+                  String msg = new String(receiveMessage.getData(), 0, receiveMessage.getLength());
+                  jtaRecvText.append("\n"+msg); 
+               }catch(SocketTimeoutException ste){
+                  jtaInfo.append("\nSocket Timed out, Waiting for new messages");
+               }
                
                // unpack the packet
-               String msg = new String(receiveMessage.getData(), 0, receiveMessage.getLength());
-               
-               
                // print out on screen
-               jtaRecvText.setText(jtaRecvText.getText()+msg+"\n");
                
             } // end try
             
